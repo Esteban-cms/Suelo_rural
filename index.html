@@ -1,178 +1,140 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./resources/ol.css">
-  <link rel="stylesheet" href="resources/fontawesome-all.min.css">
-  <link href="resources/photon-geocoder-autocomplete.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
-  <link rel="stylesheet" href="./resources/qgis2web.css">
-
+  <title>🌿 Explorador Rural – Briceño, Antioquia 🌿</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="resources/ol.css">
+  <link rel="stylesheet" href="resources/qgis2web.css">
+  <script src="resources/ol.js"></script>
+  <script src="resources/qgis2web_expressions.js"></script>
+  <script src="resources/polyfills.js"></script>
+  <script src="resources/functions.js"></script>
+  <script src="resources/Autolinker.min.js"></script>
+  <script src="resources/qgis2web.js"></script>
   <style>
     html, body, #map {
-      width: 100%;
       height: 100%;
-      padding: 0;
       margin: 0;
+      padding: 0;
     }
-
-    /* Encabezado superior */
-    #header {
+    #buscador {
       position: absolute;
       top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      background-color: rgba(255,255,255,0.95);
+      z-index: 1000;
+      background: white;
       border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      padding: 10px 25px;
-      font-family: "Segoe UI", sans-serif;
-      z-index: 1000;
-      text-align: center;
-      font-weight: 600;
-      color: #2e5339;
-      font-size: 18px;
-    }
-
-    /* Cuadro de búsqueda */
-    #search-container {
-      position: absolute;
-      top: 65px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      background-color: rgba(255, 255, 255, 0.95);
-      padding: 6px 10px;
-      border-radius: 25px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      padding: 10px;
       display: flex;
       align-items: center;
     }
-
-    #search-input {
+    #buscador input {
       border: none;
       outline: none;
-      padding: 8px 12px;
-      border-radius: 20px;
-      width: 260px;
+      padding: 6px;
+      border-radius: 6px;
       font-size: 14px;
+      width: 250px;
     }
-
-    #search-button {
-      background-color: #4CAF50;
-      color: white;
+    #buscador button {
+      background: #2e7d32;
       border: none;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      margin-left: 5px;
+      color: white;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin-left: 6px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
-
-    #search-button:hover {
-      background-color: #45a049;
+    #buscador button:hover {
+      background: #1b5e20;
     }
-
-    .ol-control {
-      margin-top: 10px !important;
+    #titulo {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      background: white;
+      padding: 8px 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      font-weight: bold;
+      color: #2e7d32;
+      font-family: sans-serif;
     }
   </style>
-
-  <title>Explorador Rural - Briceño 🌱</title>
 </head>
 
 <body>
+  <div id="buscador">
+    <input id="buscadorPredio" type="text" placeholder="Ingrese matrícula predial...">
+    <button onclick="buscarPredio()">🔍</button>
+  </div>
+  <div id="titulo">🌿 Explorador Rural – Briceño, Antioquia 🌿</div>
   <div id="map"></div>
 
-  <!-- Encabezado -->
-  <div id="header">🌿 Explorador Rural – Briceño, Antioquia 🌿</div>
-
-  <!-- Buscador -->
-  <div id="search-container">
-    <input type="text" id="search-input" placeholder="Insertar matrícula o PK_PREDIOS">
-    <button id="search-button"><i class="fas fa-search"></i></button>
-  </div>
-
-  <!-- Pop-up -->
-  <div id="popup" class="ol-popup">
-    <a href="#" id="popup-closer" class="ol-popup-closer"></a>
-    <div id="popup-content"></div>
-  </div>
-
-  <!-- Scripts base de QGIS2WEB -->
-  <script src="resources/qgis2web_expressions.js"></script>
-  <script src="./resources/functions.js"></script>
-  <script src="./resources/ol.js"></script>
-  <script src="./resources/ol-layerswitcher.js"></script>
-  <script src="resources/photon-geocoder-autocomplete.min.js"></script>
-  <script src="layers/Predios_Usos_Unidos_0.js"></script>
-  <script src="styles/Predios_Usos_Unidos_0_style.js"></script>
-  <script src="./layers/layers.js"></script>
-  <script src="./resources/Autolinker.min.js"></script>
-  <script src="./resources/qgis2web.js"></script>
+  <!-- CAPAS DEL MAPA -->
+  <script src="layers/Predios_Rurales.js"></script>
+  <script src="layers/ÁreaActividadRural_0.js"></script>
 
   <script>
-    // Esperar a que el mapa esté listo
-    document.addEventListener("DOMContentLoaded", function() {
-      const searchInput = document.getElementById("search-input");
-      const searchButton = document.getElementById("search-button");
+    // Base map
+    var map = new ol.Map({
+      target: 'map',
+      layers: [
+        new ol.layer.Tile({
+          source: new ol.source.OSM()
+        }),
+        json_ÁreaActividadRural_0,
+        json_Predios_Rurales
+      ],
+      view: new ol.View({
+        center: ol.proj.fromLonLat([-75.65, 6.75]),
+        zoom: 11
+      })
+    });
 
-      // Supone que la capa se llama 'layer_Predios_Usos_Unidos_0'
-      const prediosLayer = typeof layer_Predios_Usos_Unidos_0 !== 'undefined' ? layer_Predios_Usos_Unidos_0 : null;
-      let highlightFeature = null;
+    // Función de búsqueda por PK_PREDIOS
+    function buscarPredio() {
+      var codigo = document.getElementById('buscadorPredio').value.trim();
+      if (!codigo) return;
 
-      function buscarPredio() {
-        const texto = searchInput.value.trim();
-        if (!texto || !prediosLayer) return;
+      var encontrado = null;
 
-        let found = false;
-
-        prediosLayer.getSource().getFeatures().forEach(feature => {
-          const pk = String(feature.get("PK_PREDIOS"));
-          if (pk.includes(texto)) {
-            const geometry = feature.getGeometry();
-            const extent = geometry.getExtent();
-
-            // Zoom al predio
-            map.getView().fit(extent, { duration: 1000, maxZoom: 16 });
-
-            // Quitar resaltado previo
-            if (highlightFeature) {
-              prediosLayer.getSource().removeFeature(highlightFeature);
-            }
-
-            // Crear borde resaltado
-            highlightFeature = feature.clone();
-            highlightFeature.setStyle(
-              new ol.style.Style({
-                stroke: new ol.style.Stroke({ color: 'red', width: 3 }),
-                fill: new ol.style.Fill({ color: 'rgba(255,0,0,0.1)' })
-              })
-            );
-            // Crear capa temporal para resaltar
-            const highlightLayer = new ol.layer.Vector({
-              source: new ol.source.Vector({ features: [highlightFeature] })
+      map.getLayers().forEach(function(layer) {
+        if (layer instanceof ol.layer.Vector) {
+          var source = layer.getSource();
+          if (source && source.getFeatures) {
+            var features = source.getFeatures();
+            features.forEach(function(f) {
+              if (String(f.get('PK_PREDIOS')).trim() === codigo) {
+                encontrado = f;
+              }
             });
-            map.addLayer(highlightLayer);
-
-            found = true;
           }
-        });
-
-        if (!found) alert("No se encontró ningún predio con esa matrícula.");
-      }
-
-      searchButton.addEventListener("click", buscarPredio);
-      searchInput.addEventListener("keypress", function(e) {
-        if (e.key === "Enter") buscarPredio();
+        }
       });
+
+      if (encontrado) {
+        var extent = encontrado.getGeometry().getExtent();
+        map.getView().fit(extent, { duration: 1000, maxZoom: 17 });
+
+        // Resaltar el predio encontrado
+        encontrado.setStyle(new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: '#ff0000', width: 3 }),
+          fill: new ol.style.Fill({ color: 'rgba(255, 0, 0, 0.25)' })
+        }));
+      } else {
+        alert('No se encontró el predio con esa matrícula.');
+      }
+    }
+
+    // Buscar al presionar Enter
+    document.getElementById('buscadorPredio').addEventListener('keyup', function(e) {
+      if (e.key === 'Enter') buscarPredio();
     });
   </script>
 </body>
