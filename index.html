@@ -107,10 +107,9 @@
       const searchInput = document.getElementById("search-input");
       const searchButton = document.getElementById("search-button");
 
-      // Capa de predios
       const prediosLayer = typeof layer_Predios_Usos_Unidos_0 !== 'undefined' ? layer_Predios_Usos_Unidos_0 : null;
 
-      // Capa temporal para resaltado
+      // Capa para resaltar predios
       const highlightLayer = new ol.layer.Vector({
         source: new ol.source.Vector(),
         style: new ol.style.Style({
@@ -124,21 +123,24 @@
         const texto = searchInput.value.trim();
         if (!texto || !prediosLayer) return;
 
-        // Limpiar resaltado previo
+        const source = prediosLayer.getSource();
+
+        // Esperar si la capa aún no cargó features
+        if (source.getFeatures().length === 0) {
+          setTimeout(buscarPredio, 500);
+          return;
+        }
+
         highlightLayer.getSource().clear();
         let found = false;
 
-        prediosLayer.getSource().getFeatures().forEach(feature => {
-          const pk = feature.get("PK_PREDIOS").toString();
-
+        source.getFeatures().forEach(feature => {
+          const pk = feature.get("PK_PREDIOS")?.toString();
           if (pk === texto) { // coincidencia exacta
             const geometry = feature.getGeometry();
             const extent = geometry.getExtent();
-
-            // Zoom al predio
             map.getView().fit(extent, { duration: 1000, maxZoom: 16 });
 
-            // Clonar feature y agregar a la capa de resaltado
             const highlightFeature = feature.clone();
             highlightLayer.getSource().addFeature(highlightFeature);
 
@@ -149,9 +151,17 @@
         if (!found) alert("No se encontró ningún predio con esa matrícula.");
       }
 
-      searchButton.addEventListener("click", buscarPredio);
+      function esperarCapaYBuscar() {
+        if (prediosLayer && prediosLayer.getSource().getFeatures().length > 0) {
+          buscarPredio();
+        } else {
+          setTimeout(esperarCapaYBuscar, 500);
+        }
+      }
+
+      searchButton.addEventListener("click", esperarCapaYBuscar);
       searchInput.addEventListener("keypress", function(e) {
-        if (e.key === "Enter") buscarPredio();
+        if (e.key === "Enter") esperarCapaYBuscar();
       });
     });
   </script>
