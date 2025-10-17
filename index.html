@@ -126,11 +126,11 @@
 
         // Limpiar resaltado previo
         highlightLayer.getSource().clear();
-
         let found = false;
 
         prediosLayer.getSource().getFeatures().forEach(feature => {
-          const pk = String(feature.get("PK_PREDIOS"));
+          const pk = feature.get("PK_PREDIOS").toString();
+
           if (pk === texto) { // coincidencia exacta
             const geometry = feature.getGeometry();
             const extent = geometry.getExtent();
