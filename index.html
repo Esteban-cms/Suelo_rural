@@ -7,10 +7,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
 
-  <!-- Estilos base de QGIS2WEB -->
   <link rel="stylesheet" href="./resources/ol.css">
   <link rel="stylesheet" href="resources/fontawesome-all.min.css">
-  <link href="resources/photon-geocoder-autocomplete.min.css" rel="stylesheet">
   <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
   <link rel="stylesheet" href="./resources/qgis2web.css">
 
@@ -57,6 +55,29 @@
       font-size: 14px;
     }
 
+    #suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border-radius: 0 0 10px 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      max-height: 180px;
+      overflow-y: auto;
+      display: none;
+      z-index: 1001;
+    }
+
+    #suggestions div {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    #suggestions div:hover {
+      background-color: #f0f0f0;
+    }
+
     #search-button {
       background-color: #4CAF50;
       color: white;
@@ -73,42 +94,17 @@
 
     #search-button:hover { background-color: #45a049; }
 
-    /* Popup */
     .ol-popup {
-      position: absolute;
-      background-color: white;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      background: white;
       padding: 10px;
       border-radius: 8px;
-      border: 1px solid #cccccc;
-      bottom: 12px;
-      left: -50px;
+      border: 1px solid #ccc;
       min-width: 200px;
-      font-family: "Segoe UI", sans-serif;
     }
 
-    .ol-popup:after, .ol-popup:before {
-      top: 100%;
-      border: solid transparent;
-      content: " ";
-      height: 0;
-      width: 0;
-      position: absolute;
-      pointer-events: none;
-    }
-
-    .ol-popup:after {
-      border-top-color: white;
-      border-width: 10px;
-      left: 48px;
-      margin-left: -10px;
-    }
-
-    .ol-popup-closer {
-      text-decoration: none;
-      position: absolute;
-      top: 2px;
-      right: 8px;
+    .ol-popup-content p {
+      margin: 4px 0;
+      font-size: 13px;
     }
 
     .ol-control { margin-top: 10px !important; }
@@ -116,121 +112,121 @@
 
   <title>🌿 Explorador Rural – Briceño, Antioquia 🌿</title>
 </head>
+
 <body>
   <div id="map"></div>
   <div id="header">🌿 Explorador Rural – Briceño, Antioquia 🌿</div>
 
-  <!-- 🔍 Buscador -->
   <div id="search-container">
-    <input id="search-input" type="text" placeholder="Buscar matrícula..." list="sugerencias" />
-    <datalist id="sugerencias"></datalist>
+    <div style="position: relative; width: 100%;">
+      <input type="text" id="search-input" placeholder="Buscar matrícula (PK_PREDIOS)">
+      <div id="suggestions"></div>
+    </div>
     <button id="search-button"><i class="fas fa-search"></i></button>
   </div>
 
-  <!-- Popup -->
-  <div id="popup" class="ol-popup">
-    <a href="#" id="popup-closer" class="ol-popup-closer">✖</a>
-    <div id="popup-content"></div>
-  </div>
-
-  <!-- Scripts QGIS2WEB -->
+  <!-- Librerías de QGIS2WEB -->
   <script src="resources/qgis2web_expressions.js"></script>
   <script src="./resources/functions.js"></script>
   <script src="./resources/ol.js"></script>
   <script src="./resources/ol-layerswitcher.js"></script>
-  <script src="resources/photon-geocoder-autocomplete.min.js"></script>
-  <script src="layers/Predios_Usos_Unidos_0.js"></script>
-  <script src="styles/Predios_Usos_Unidos_0_style.js"></script>
-  <script src="layers/layers.js"></script>
+  <script src="./layers/Predios_Usos_Unidos_0.js"></script>
+  <script src="./styles/Predios_Usos_Unidos_0_style.js"></script>
+  <script src="./layers/layers.js"></script>
   <script src="./resources/Autolinker.min.js"></script>
   <script src="./resources/qgis2web.js"></script>
 
   <script>
-    // Centrar en Briceño
-    map.getView().setCenter(ol.proj.fromLonLat([-75.569, 7.132]));
-    map.getView().setZoom(13);
+    document.addEventListener("DOMContentLoaded", function () {
+      // Crear mapa
+      const map = new ol.Map({
+        target: 'map',
+        layers: [lyr_Predios_Usos_Unidos_0],
+        view: new ol.View({
+          center: ol.proj.fromLonLat([-75.569, 7.132]),
+          zoom: 12
+        })
+      });
 
-    // Obtener la capa de predios (la principal)
-    const prediosLayer = layer_Predios_Usos_Unidos_0;
+      const searchInput = document.getElementById("search-input");
+      const searchButton = document.getElementById("search-button");
+      const suggestions = document.getElementById("suggestions");
+      const source = lyr_Predios_Usos_Unidos_0.getSource();
 
-    // Popup configuración
-    const popupContainer = document.getElementById("popup");
-    const popupContent = document.getElementById("popup-content");
-    const popupCloser = document.getElementById("popup-closer");
-    const popupOverlay = new ol.Overlay({
-      element: popupContainer,
-      autoPan: true,
-      autoPanAnimation: { duration: 250 },
-    });
-    map.addOverlay(popupOverlay);
+      // Capa de resaltado
+      const highlightLayer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: 'red', width: 3 }),
+          fill: new ol.style.Fill({ color: 'rgba(255,0,0,0.1)' })
+        })
+      });
+      map.addLayer(highlightLayer);
 
-    popupCloser.onclick = function () {
-      popupOverlay.setPosition(undefined);
-      popupCloser.blur();
-      return false;
-    };
+      // Función para mostrar info del predio
+      function mostrarInfo(feature) {
+        const pk = feature.get("PK_PREDIOS") || "N/A";
+        const vereda = feature.get("VEREDA") || "No definida";
+        const uso = feature.get("USO") || "No definido";
 
-    const searchInput = document.getElementById("search-input");
-    const sugerencias = document.getElementById("sugerencias");
+        alert(`📋 Información del predio:\n\nMatrícula: ${pk}\nVereda: ${vereda}\nUso: ${uso}`);
+      }
 
-    // 🟢 Autocompletado de matrículas
-    searchInput.addEventListener("input", function () {
-      const texto = this.value.toLowerCase();
-      const features = prediosLayer.getSource().getFeatures();
-      sugerencias.innerHTML = "";
+      // Buscar y resaltar
+      function buscarPredioPorTexto(texto) {
+        highlightLayer.getSource().clear();
+        const feats = source.getFeatures();
+        const f = feats.find(ft => ft.get("PK_PREDIOS")?.toString() === texto);
+        if (f) {
+          const geometry = f.getGeometry();
+          const extent = geometry.getExtent();
+          map.getView().fit(extent, { duration: 1000, maxZoom: 17 });
+          const clone = f.clone();
+          highlightLayer.getSource().addFeature(clone);
+          mostrarInfo(f);
+        } else {
+          alert("⚠️ No se encontró ningún predio con esa matrícula.");
+        }
+      }
 
-      if (texto.length < 2) return;
+      // Autocompletar
+      searchInput.addEventListener("input", function () {
+        const texto = this.value.trim().toLowerCase();
+        suggestions.innerHTML = "";
+        if (!texto) {
+          suggestions.style.display = "none";
+          return;
+        }
 
-      const coincidencias = features
-        .map(f => f.get("PK_PREDIOS"))
-        .filter(id => id && id.toString().toLowerCase().includes(texto))
-        .slice(0, 10);
+        const feats = source.getFeatures();
+        const coincidencias = feats
+          .map(f => f.get("PK_PREDIOS")?.toString())
+          .filter(pk => pk && pk.toLowerCase().includes(texto))
+          .slice(0, 10);
 
-      coincidencias.forEach(id => {
-        const option = document.createElement("option");
-        option.value = id;
-        sugerencias.appendChild(option);
+        coincidencias.forEach(pk => {
+          const div = document.createElement("div");
+          div.textContent = pk;
+          div.addEventListener("click", function () {
+            searchInput.value = pk;
+            suggestions.style.display = "none";
+            buscarPredioPorTexto(pk);
+          });
+          suggestions.appendChild(div);
+        });
+
+        suggestions.style.display = coincidencias.length ? "block" : "none";
+      });
+
+      // Buscar manualmente (Enter o botón)
+      searchButton.addEventListener("click", () => {
+        buscarPredioPorTexto(searchInput.value.trim());
+      });
+
+      searchInput.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") buscarPredioPorTexto(searchInput.value.trim());
       });
     });
-
-    // 🔍 Buscar y centrar el predio
-    function buscarPredio() {
-      const texto = searchInput.value.trim();
-      if (!texto) return;
-
-      const features = prediosLayer.getSource().getFeatures();
-      const f = features.find(ft => ft.get("PK_PREDIOS")?.toString() === texto);
-
-      if (f) seleccionarPredio(f);
-      else alert("No se encontró ningún predio con esa matrícula.");
-    }
-
-    document.getElementById("search-button").addEventListener("click", buscarPredio);
-    searchInput.addEventListener("keypress", function (e) {
-      if (e.key === "Enter") buscarPredio();
-    });
-
-    // 🟩 Seleccionar y mostrar info
-    function seleccionarPredio(feature) {
-      const extent = feature.getGeometry().getExtent();
-      map.getView().fit(extent, { duration: 1000, padding: [50, 50, 50, 50], maxZoom: 17 });
-
-      const props = feature.getProperties();
-      const matricula = props["PK_PREDIOS"] || "Sin dato";
-      const vereda = props["NOMBRE_VER"] || "Sin dato";
-      const uso = props["Usos"] || "Sin dato";
-
-      const coord = ol.extent.getCenter(extent);
-      const popupHtml = `
-        <div style="font-family:Segoe UI; font-size:14px;">
-          <b>📑 Matrícula:</b> ${matricula}<br>
-          <b>🏞 Vereda:</b> ${vereda}<br>
-          <b>🌱 Uso del suelo:</b> ${uso}
-        </div>
-      `;
-      popupContent.innerHTML = popupHtml;
-      popupOverlay.setPosition(coord);
-    }
   </script>
 </body>
 </html>
