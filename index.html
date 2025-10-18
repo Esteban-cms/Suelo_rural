@@ -1,200 +1,191 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="./resources/ol.css">
+  <link rel="stylesheet" href="resources/fontawesome-all.min.css">
+  <link href="resources/photon-geocoder-autocomplete.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
+  <link rel="stylesheet" href="./resources/qgis2web.css">
 
-<!-- Estilos base -->
-<link rel="stylesheet" href="./resources/ol.css">
-<link rel="stylesheet" href="resources/fontawesome-all.min.css">
-<link href="resources/photon-geocoder-autocomplete.min.css" rel="stylesheet">
-<link rel="stylesheet" href="./resources/ol-layerswitcher.css">
-<link rel="stylesheet" href="./resources/qgis2web.css">
+  <style>
+    html, body, #map { width: 100%; height: 100%; padding: 0; margin: 0; }
 
-<style>
-html, body, #map {
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  margin: 0;
-}
+    #header {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(255,255,255,0.95);
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      padding: 10px 25px;
+      font-family: "Segoe UI", sans-serif;
+      z-index: 1000;
+      text-align: center;
+      font-weight: 600;
+      color: #2e5339;
+      font-size: 18px;
+    }
 
-/* --- Título principal --- */
-#header {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(255,255,255,0.95);
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  padding: 10px 25px;
-  font-family: "Segoe UI", sans-serif;
-  z-index: 1000;
-  text-align: center;
-  font-weight: 600;
-  color: #2e5339;
-  font-size: 18px;
-}
+    #search-container {
+      position: absolute;
+      top: 65px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 6px 10px;
+      border-radius: 25px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+    }
 
-/* --- Buscador --- */
-#search-container {
-  position: absolute;
-  top: 65px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  background-color: rgba(255, 255, 255, 0.95);
-  padding: 6px 10px;
-  border-radius: 25px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-}
+    #search-input {
+      border: none;
+      outline: none;
+      padding: 8px 12px;
+      border-radius: 20px;
+      width: 260px;
+      font-size: 14px;
+    }
 
-#search-input {
-  border: none;
-  outline: none;
-  padding: 8px 12px;
-  border-radius: 20px;
-  width: 260px;
-  font-size: 14px;
-}
+    #search-button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      margin-left: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-#search-button {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  margin-left: 5px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+    #search-button:hover { background-color: #45a049; }
+    .ol-control { margin-top: 10px !important; }
+  </style>
 
-#search-button:hover {
-  background-color: #45a049;
-}
-
-.ol-control {
-  margin-top: 10px !important;
-}
-</style>
-
-<title>Explorador Rural - Briceño 🌱</title>
+  <title>🌿 Explorador Rural – Briceño, Antioquia 🌿</title>
 </head>
 
 <body>
-<div id="map"></div>
+  <div id="map" class="map"></div>
+  <div id="header">🌿 Explorador Rural – Briceño, Antioquia 🌿</div>
 
-<!-- Título -->
-<div id="header">🌿 Explorador Rural – Briceño, Antioquia 🌿</div>
+  <div id="search-container">
+    <input type="text" id="search-input" placeholder="Insertar matrícula o PK_PREDIOS">
+    <button id="search-button"><i class="fas fa-search"></i></button>
+  </div>
 
-<!-- Buscador -->
-<div id="search-container">
-  <input type="text" id="search-input" placeholder="Insertar matrícula o PK_PREDIOS">
-  <button id="search-button"><i class="fas fa-search"></i></button>
-</div>
+  <div id="popup" class="ol-popup">
+    <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+    <div id="popup-content"></div>
+  </div>
 
-<!-- Popup -->
-<div id="popup" class="ol-popup">
-  <a href="#" id="popup-closer" class="ol-popup-closer"></a>
-  <div id="popup-content"></div>
-</div>
+  <!-- Scripts base de QGIS2WEB -->
+  <script src="resources/qgis2web_expressions.js"></script>
+  <script src="./resources/functions.js"></script>
+  <script src="./resources/ol.js"></script>
+  <script src="./resources/ol-layerswitcher.js"></script>
+  <script src="resources/photon-geocoder-autocomplete.min.js"></script>
+  <script src="layers/Predios_Usos_Unidos_0.js"></script>
+  <script src="styles/Predios_Usos_Unidos_0_style.js"></script>
+  <script src="./layers/layers.js"></script>
+  <script src="./resources/Autolinker.min.js"></script>
+  <script src="./resources/qgis2web.js"></script>
 
-<!-- Scripts base de QGIS2WEB -->
-<script src="resources/qgis2web_expressions.js"></script>
-<script src="./resources/functions.js"></script>
-<script src="./resources/ol.js"></script>
-<script src="./resources/ol-layerswitcher.js"></script>
-<script src="resources/photon-geocoder-autocomplete.min.js"></script>
-<script src="layers/Predios_Usos_Unidos_0.js"></script>
-<script src="styles/Predios_Usos_Unidos_0_style.js"></script>
-<script src="./layers/layers.js"></script>
-<script src="./resources/Autolinker.min.js"></script>
-<script src="./resources/qgis2web.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Centrar en Briceño
+      map.getView().setCenter(ol.proj.fromLonLat([-75.569, 7.132]));
+      map.getView().setZoom(13);
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
+      const searchInput = document.getElementById("search-input");
+      const searchButton = document.getElementById("search-button");
 
-  // Centrar en Briceño, Antioquia
-  map.getView().setCenter(ol.proj.fromLonLat([-75.569, 7.132]));
-  map.getView().setZoom(13);
-
-  const searchInput = document.getElementById("search-input");
-  const searchButton = document.getElementById("search-button");
-  const prediosLayer = typeof layer_Predios_Usos_Unidos_0 !== 'undefined' ? layer_Predios_Usos_Unidos_0 : null;
-
-  // Capa para resaltar resultados
-  const highlightLayer = new ol.layer.Vector({
-    source: new ol.source.Vector(),
-    style: new ol.style.Style({
-      stroke: new ol.style.Stroke({
-        color: 'red',
-        width: 3
-      }),
-      fill: new ol.style.Fill({
-        color: 'rgba(255,0,0,0.1)'
-      })
-    })
-  });
-  map.addLayer(highlightLayer);
-
-  function buscarPredio() {
-    const texto = searchInput.value.trim();
-    if (!texto || !prediosLayer) return;
-
-    const source = prediosLayer.getSource();
-
-    // Si aún no cargó los features
-    if (source.getFeatures().length === 0) {
-      setTimeout(buscarPredio, 500);
-      return;
-    }
-
-    highlightLayer.getSource().clear();
-    let found = false;
-
-    source.getFeatures().forEach(feature => {
-      const pk = feature.get("PK_PREDIOS")?.toString();
-      if (pk === texto) {
-        const geometry = feature.getGeometry();
-        const extent = geometry.getExtent();
-
-        // Zoom automático al predio
-        map.getView().fit(extent, { duration: 1000, maxZoom: 17 });
-
-        // Destacar predio
-        const highlightFeature = feature.clone();
-        highlightLayer.getSource().addFeature(highlightFeature);
-
-        found = true;
+      const capaPrincipal = typeof layer_Predios_Usos_Unidos_0 !== 'undefined' ? layer_Predios_Usos_Unidos_0 : null;
+      if (!capaPrincipal) {
+        console.error("❌ No se encontró la capa Predios_Usos_Unidos_0.js");
+        return;
       }
+
+      // Capa de resaltado
+      const highlightLayer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: 'red', width: 3 }),
+          fill: new ol.style.Fill({ color: 'rgba(255,0,0,0.15)' })
+        })
+      });
+      map.addLayer(highlightLayer);
+
+      // Cargar capa GeoJSON auxiliar para búsqueda
+      fetch("Predios_Briceno.geojson")
+        .then(response => response.json())
+        .then(data => {
+          const busquedaLayer = new ol.layer.Vector({
+            source: new ol.source.Vector({
+              features: new ol.format.GeoJSON().readFeatures(data, {
+                featureProjection: map.getView().getProjection()
+              })
+            }),
+            style: new ol.style.Style({
+              stroke: new ol.style.Stroke({ color: 'transparent', width: 0 }),
+              fill: new ol.style.Fill({ color: 'transparent' })
+            })
+          });
+          map.addLayer(busquedaLayer);
+
+          function buscarPredio() {
+            const texto = searchInput.value.trim();
+            if (!texto) return;
+
+            highlightLayer.getSource().clear();
+
+            const features = busquedaLayer.getSource().getFeatures();
+            const encontrados = features.filter(f => f.get("PK_PREDIOS")?.toString() === texto);
+
+            if (encontrados.length > 0) {
+              const geom = encontrados[0].getGeometry();
+              const extent = geom.getExtent();
+              map.getView().fit(extent, { duration: 1000, maxZoom: 17 });
+
+              // Resaltar sobre la capa visible
+              const highlightFeature = encontrados[0].clone();
+              highlightLayer.getSource().addFeature(highlightFeature);
+
+              // Mostrar popup con atributos
+              const props = encontrados[0].getProperties();
+              const info = `
+                <b>PK_PREDIOS:</b> ${props.PK_PREDIOS}<br>
+                <b>Vereda:</b> ${props.NOMBRE_VER || "Sin dato"}<br>
+                <b>Usos:</b> ${props.Usos || "Sin dato"}
+              `;
+              const coord = geom.getExtent();
+              const center = [(coord[0]+coord[2])/2, (coord[1]+coord[3])/2];
+              const popupContent = document.getElementById("popup-content");
+              popupContent.innerHTML = info;
+              popup.setPosition(center);
+            } else {
+              alert("No se encontró ningún predio con esa matrícula.");
+            }
+          }
+
+          searchButton.addEventListener("click", buscarPredio);
+          searchInput.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") buscarPredio();
+          });
+        })
+        .catch(err => console.error("Error al cargar Predios_Briceno.geojson:", err));
     });
-
-    if (!found) alert("No se encontró ningún predio con esa matrícula.");
-  }
-
-  function esperarCapaYBuscar() {
-    if (prediosLayer && prediosLayer.getSource().getFeatures().length > 0) {
-      buscarPredio();
-    } else {
-      setTimeout(esperarCapaYBuscar, 500);
-    }
-  }
-
-  // Eventos del buscador
-  searchButton.addEventListener("click", esperarCapaYBuscar);
-  searchInput.addEventListener("keypress", function(e) {
-    if (e.key === "Enter") esperarCapaYBuscar();
-  });
-});
-</script>
+  </script>
 </body>
 </html>
