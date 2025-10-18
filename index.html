@@ -1,229 +1,160 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>Visor de Predios - Briceño Antioquia</title>
+  <meta charset="utf-8" />
+  <title>Visor de Predios - Briceño</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Estilos base de QGIS2Web -->
-  <link rel="stylesheet" href="resources/ol.css">
-  <link rel="stylesheet" href="resources/qgis2web.css">
-  <link rel="stylesheet" href="resources/fontawesome-all.min.css">
-  <style>
-    html, body { height: 100%; margin: 0; }
-    #map { width: 100%; height: 100%; }
+  <!-- Leaflet base -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    /* 🔍 Buscador */
-    #search-panel {
+  <!-- QGIS2Web styles -->
+  <link rel="stylesheet" href="styles/qgis2web.css">
+  <link rel="stylesheet" href="styles/leaflet.css">
+
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Contenedor del buscador */
+    .search-container {
       position: absolute;
-      top: 10px;
+      top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 1000;
       background: white;
-      padding: 10px 15px;
+      padding: 8px 14px;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      box-shadow: 0px 2px 8px rgba(0,0,0,0.3);
+      z-index: 1000;
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-family: sans-serif;
+      gap: 6px;
     }
+
     #search-input {
-      padding: 6px 10px;
-      border: 1px solid #aaa;
+      padding: 6px;
       border-radius: 6px;
-      font-size: 14px;
-      width: 200px;
+      border: 1px solid #ccc;
+      width: 260px;
     }
+
     #search-button {
-      background: #2b5b2b;
+      background-color: #33691E;
       color: white;
       border: none;
-      padding: 6px 10px;
       border-radius: 6px;
+      padding: 6px 12px;
       cursor: pointer;
     }
 
-    /* 📍 Popup */
-    .ol-popup {
+    #search-button:hover {
+      background-color: #558B2F;
+    }
+
+    h1.titulo {
       position: absolute;
-      background-color: white;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-      padding: 15px;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #2E7D32;
+      font-size: 22px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 6px 14px;
       border-radius: 10px;
-      border: 1px solid #ccc;
-      bottom: 12px;
-      left: -50px;
-      min-width: 200px;
-    }
-    .ol-popup:after, .ol-popup:before {
-      top: 100%;
-      border: solid transparent;
-      content: " ";
-      height: 0;
-      width: 0;
-      position: absolute;
-      pointer-events: none;
-    }
-    .ol-popup:after {
-      border-top-color: white;
-      border-width: 10px;
-      left: 48px;
-      margin-left: -10px;
-    }
-    .ol-popup:before {
-      border-top-color: #cccccc;
-      border-width: 11px;
-      left: 48px;
-      margin-left: -11px;
-    }
-    .ol-popup-closer {
-      text-decoration: none;
-      position: absolute;
-      top: 2px;
-      right: 8px;
+      z-index: 900;
     }
   </style>
 </head>
-
 <body>
-  <!-- 🔍 Buscador -->
-  <div id="search-panel">
-    <input id="search-input" type="text" placeholder="Buscar por PK_PREDIOS...">
+  <div id="map"></div>
+
+  <div class="search-container">
+    <input id="search-input" type="text" placeholder="Ingrese la matrícula (PK_PREDIOS)">
     <button id="search-button">Buscar</button>
   </div>
 
-  <!-- 🗺️ Mapa -->
-  <div id="map"></div>
+  <h1 class="titulo">Visor Catastral - Briceño Antioquia</h1>
 
-  <!-- 📍 Popup -->
-  <div id="popup" class="ol-popup">
-    <a href="#" id="popup-closer" class="ol-popup-closer"></a>
-    <div id="popup-content"></div>
-  </div>
-
-  <!-- Scripts de QGIS2Web -->
-  <script src="resources/ol.js"></script>
-  <script src="resources/qgis2web_expressions.js"></script>
-  <script src="resources/proj4.js"></script>
-  <script src="resources/qgis2web.js"></script>
-
-  <!-- Tus capas -->
-  <script src="layers/layers.js"></script>
+  <!-- Capa principal -->
   <script src="layers/Predios_Usos_Unidos_0.js"></script>
+  <script src="layers/layers.js"></script>
 
-  <!-- 🔧 Código del buscador -->
   <script>
-  window.addEventListener("load", function() {
-    const searchInput = document.getElementById("search-input");
-    const searchButton = document.getElementById("search-button");
+    // Inicializar mapa centrado en Briceño
+    var map = L.map('map', {
+      zoomControl: true,
+      minZoom: 10
+    }).setView([6.667, -75.67], 13);
 
-    // Verificar que el mapa existe
-    if (typeof map === "undefined") {
-      console.error("❌ El mapa no está definido. Verifica que QGIS2Web haya generado el mapa correctamente.");
-      return;
-    }
+    // Capa base de mapa
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-    // Capa de resaltado
-    const highlightLayer = new ol.layer.Vector({
-      source: new ol.source.Vector(),
-      style: new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: 'red', width: 3 }),
-        fill: new ol.style.Fill({ color: 'rgba(255,0,0,0.1)' })
-      })
-    });
-    map.addLayer(highlightLayer);
+    // Añadir capa principal de QGIS2Web
+    var layer_Predios = new L.geoJson(json_Predios_Usos_Unidos_0, {
+      onEachFeature: function (feature, layer) {
+        var popupContent = "<b>PK_PREDIOS:</b> " + feature.properties.PK_PREDIOS +
+                           "<br><b>Vereda:</b> " + feature.properties.NOMBRE_VER +
+                           "<br><b>Uso:</b> " + feature.properties.Usos;
+        layer.bindPopup(popupContent);
+      }
+    }).addTo(map);
 
-    // Popup
-    const container = document.getElementById('popup');
-    const content = document.getElementById('popup-content');
-    const closer = document.getElementById('popup-closer');
-    const popup = new ol.Overlay({
-      element: container,
-      autoPan: true,
-      autoPanAnimation: { duration: 250 }
-    });
-    map.addOverlay(popup);
-    closer.onclick = function () {
-      popup.setPosition(undefined);
-      closer.blur();
-      return false;
-    };
-
-    // Capa de usos (QGIS2Web)
-    const usosLayer = typeof layer_Predios_Usos_Unidos_0 !== 'undefined' ? layer_Predios_Usos_Unidos_0 : null;
-    if (!usosLayer) {
-      console.error("❌ No se encontró layer_Predios_Usos_Unidos_0 en layers/.");
-      return;
-    }
-
-    // Cargar capa de predios
-    let prediosLayer = null;
+    // Cargar la capa de búsqueda (invisible)
+    var searchLayer;
     fetch('Predios_Briceno.geojson')
-      .then(res => res.json())
+      .then(response => response.json())
       .then(data => {
-        const features = new ol.format.GeoJSON().readFeatures(data, {
-          featureProjection: map.getView().getProjection()
-        });
-        const source = new ol.source.Vector({ features });
-        prediosLayer = new ol.layer.Vector({
-          source,
-          style: new ol.style.Style({
-            stroke: new ol.style.Stroke({ color: '#2e5339', width: 1 }),
-            fill: new ol.style.Fill({ color: 'rgba(46,83,57,0.05)' })
-          })
-        });
-        map.addLayer(prediosLayer);
-        console.log("✅ Capa Predios_Briceno.geojson cargada:", features.length, "features");
-      })
-      .catch(err => console.error("❌ Error cargando Predios_Briceno.geojson:", err));
+        searchLayer = L.geoJson(data, {
+          style: { color: '#000000', weight: 2, opacity: 0 } // invisible
+        }).addTo(map);
+      });
+
+    var highlight;
 
     // Función de búsqueda
-    function buscarPredio() {
-      const texto = searchInput.value.trim();
-      if (!texto) return alert("Ingrese un PK_PREDIOS para buscar.");
+    document.getElementById('search-button').addEventListener('click', function() {
+      var codigo = document.getElementById('search-input').value.trim();
+      if (!codigo) return alert('Por favor ingrese una matrícula.');
 
-      if (!prediosLayer) {
-        alert("La capa de predios aún no ha cargado. Intente de nuevo en unos segundos.");
-        return;
-      }
+      if (highlight) map.removeLayer(highlight);
 
-      const predios = prediosLayer.getSource().getFeatures();
-      const usos = usosLayer.getSource().getFeatures();
+      var found = null;
+      searchLayer.eachLayer(function(layer) {
+        if (layer.feature.properties.PK_PREDIOS == codigo) {
+          found = layer;
+        }
+      });
 
-      const predio = predios.find(f => f.get("PK_PREDIOS")?.toString() === texto);
-      const uso = usos.find(f => f.get("PK_PREDIOS")?.toString() === texto);
+      if (found) {
+        highlight = L.geoJson(found.toGeoJSON(), {
+          style: { color: 'red', weight: 3, fillOpacity: 0.1 }
+        }).addTo(map);
 
-      highlightLayer.getSource().clear();
+        map.fitBounds(found.getBounds());
 
-      if (!predio) {
-        alert("❌ No se encontró ningún predio con ese PK_PREDIOS.");
-        return;
-      }
+        // Buscar también en capa principal
+        var usoFeature = null;
+        layer_Predios.eachLayer(function(layer) {
+          if (layer.feature.properties.PK_PREDIOS == codigo) usoFeature = layer;
+        });
 
-      const geom = predio.getGeometry();
-      map.getView().fit(geom.getExtent(), { duration: 1000, maxZoom: 17 });
-      highlightLayer.getSource().addFeature(predio.clone());
+        if (usoFeature) {
+          usoFeature.openPopup();
+        } else {
+          alert('Predio encontrado, pero sin información de uso.');
+        }
 
-      let html = `<b>PK_PREDIOS:</b> ${texto}<br>`;
-      if (uso) {
-        html += `<b>Vereda:</b> ${uso.get("NOMBRE_VER") || "Sin dato"}<br>`;
-        html += `<b>Uso del suelo:</b> ${uso.get("Usos") || "Sin dato"}`;
       } else {
-        html += `<i>No hay datos de uso para este predio.</i>`;
+        alert('No se encontró la matrícula ingresada.');
       }
-
-      content.innerHTML = html;
-      popup.setPosition(geom.getInteriorPoint().getCoordinates());
-    }
-
-    // Eventos
-    searchButton.addEventListener("click", buscarPredio);
-    searchInput.addEventListener("keypress", e => {
-      if (e.key === "Enter") buscarPredio();
     });
-  });
   </script>
 </body>
 </html>
