@@ -89,7 +89,7 @@
     var map = L.map('map', {
       zoomControl: true,
       minZoom: 10
-    }).setView([6.667, -75.67], 13);
+    }).setView([7.1025, -75.585], 13);
 
     // Capa base de mapa
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -97,7 +97,7 @@
     }).addTo(map);
 
     // Añadir capa principal de QGIS2Web
-    var layer_Predios = new L.geoJson(json_Predios_Usos_Unidos_0, {
+    var layer_Predios = new (Predios_Usos_Unidos, {
       onEachFeature: function (feature, layer) {
         var popupContent = "<b>PK_PREDIOS:</b> " + feature.properties.PK_PREDIOS +
                            "<br><b>Vereda:</b> " + feature.properties.NOMBRE_VER +
