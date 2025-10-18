@@ -1,190 +1,232 @@
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  // IDs que usa tu HTML qgis2web original:
-  const searchInput = document.getElementById("search-input");
-  const searchButton = document.getElementById("search-button");
-  const searchContainer = document.getElementById("search-container");
-  const popupContentEl = document.getElementById("popup-content");
-  const popupEl = document.getElementById("popup");
-  const popupCloser = document.getElementById("popup-closer");
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 
-  // crear contenedor de sugerencias bajo el buscador (sin cambiar estilos existentes)
-  let suggestions = document.createElement("div");
-  suggestions.id = "search-suggestions";
-  suggestions.style.position = "absolute";
-  suggestions.style.top = "100%";
-  suggestions.style.left = "50%";
-  suggestions.style.transform = "translateX(-50%)";
-  suggestions.style.background = "white";
-  suggestions.style.borderRadius = "8px";
-  suggestions.style.boxShadow = "0 2px 6px rgba(0,0,0,0.15)";
-  suggestions.style.maxHeight = "220px";
-  suggestions.style.overflowY = "auto";
-  suggestions.style.minWidth = "280px";
-  suggestions.style.zIndex = 2000;
-  suggestions.style.display = "none";
-  // ajustar su posición relativo al contenedor
-  searchContainer.style.position = "absolute";
-  searchContainer.appendChild(suggestions);
+  <link rel="stylesheet" href="./resources/ol.css">
+  <link rel="stylesheet" href="resources/fontawesome-all.min.css">
+  <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
+  <link rel="stylesheet" href="./resources/qgis2web.css">
 
-  // detectar variable de capa QGIS2WEB (puede llamarse lyr_Predios_Usos_Unidos_0 o layer_Predios_Usos_Unidos_0)
-  let layerVar = (typeof lyr_Predios_Usos_Unidos_0 !== "undefined") ? lyr_Predios_Usos_Unidos_0 :
-                 (typeof layer_Predios_Usos_Unidos_0 !== "undefined") ? layer_Predios_Usos_Unidos_0 : null;
+  <style>
+    html, body, #map { width: 100%; height: 100%; padding: 0; margin: 0; }
 
-  if (!layerVar) {
-    console.error("No se encontró la variable de la capa Predios_Usos_Unidos_0. Revisa layers/layers.js");
-    return;
-  }
+    #header {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(255,255,255,0.95);
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      padding: 10px 25px;
+      font-family: "Segoe UI", sans-serif;
+      z-index: 1000;
+      text-align: center;
+      font-weight: 600;
+      color: #2e5339;
+      font-size: 18px;
+    }
 
-  // esperar a que la fuente tenga features
-  function waitFeatures(maxRetries = 60, delay = 200) {
-    return new Promise((resolve, reject) => {
-      let tries = 0;
-      const iv = setInterval(() => {
-        const src = layerVar.getSource && layerVar.getSource();
-        if (src && src.getFeatures && src.getFeatures().length > 0) {
-          clearInterval(iv);
-          resolve(src.getFeatures());
+    #search-container {
+      position: absolute;
+      top: 65px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 6px 10px;
+      border-radius: 25px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+    }
+
+    #search-input {
+      border: none;
+      outline: none;
+      padding: 8px 12px;
+      border-radius: 20px;
+      width: 260px;
+      font-size: 14px;
+    }
+
+    #suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border-radius: 0 0 10px 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      max-height: 180px;
+      overflow-y: auto;
+      display: none;
+      z-index: 1001;
+    }
+
+    #suggestions div {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    #suggestions div:hover {
+      background-color: #f0f0f0;
+    }
+
+    #search-button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      margin-left: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #search-button:hover { background-color: #45a049; }
+
+    .ol-popup {
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      min-width: 200px;
+    }
+
+    .ol-popup-content p {
+      margin: 4px 0;
+      font-size: 13px;
+    }
+
+    .ol-control { margin-top: 10px !important; }
+  </style>
+
+  <title>🌿 Explorador Rural – Briceño, Antioquia 🌿</title>
+</head>
+
+<body>
+  <div id="map"></div>
+  <div id="header">🌿 Explorador Rural – Briceño, Antioquia 🌿</div>
+
+  <div id="search-container">
+    <div style="position: relative; width: 100%;">
+      <input type="text" id="search-input" placeholder="Buscar matrícula (PK_PREDIOS)">
+      <div id="suggestions"></div>
+    </div>
+    <button id="search-button"><i class="fas fa-search"></i></button>
+  </div>
+
+  <!-- Librerías de QGIS2WEB -->
+  <script src="resources/qgis2web_expressions.js"></script>
+  <script src="./resources/functions.js"></script>
+  <script src="./resources/ol.js"></script>
+  <script src="./resources/ol-layerswitcher.js"></script>
+  <script src="./layers/Predios_Usos_Unidos_0.js"></script>
+  <script src="./styles/Predios_Usos_Unidos_0_style.js"></script>
+  <script src="./layers/layers.js"></script>
+  <script src="./resources/Autolinker.min.js"></script>
+  <script src="./resources/qgis2web.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Crear mapa
+      const map = new ol.Map({
+        target: 'map',
+        layers: [lyr_Predios_Usos_Unidos_0],
+        view: new ol.View({
+          center: ol.proj.fromLonLat([-75.569, 7.132]),
+          zoom: 12
+        })
+      });
+
+      const searchInput = document.getElementById("search-input");
+      const searchButton = document.getElementById("search-button");
+      const suggestions = document.getElementById("suggestions");
+      const source = lyr_Predios_Usos_Unidos_0.getSource();
+
+      // Capa de resaltado
+      const highlightLayer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: 'red', width: 3 }),
+          fill: new ol.style.Fill({ color: 'rgba(255,0,0,0.1)' })
+        })
+      });
+      map.addLayer(highlightLayer);
+
+      // Función para mostrar info del predio
+      function mostrarInfo(feature) {
+        const pk = feature.get("PK_PREDIOS") || "N/A";
+        const vereda = feature.get("VEREDA") || "No definida";
+        const uso = feature.get("USO") || "No definido";
+
+        alert(`📋 Información del predio:\n\nMatrícula: ${pk}\nVereda: ${vereda}\nUso: ${uso}`);
+      }
+
+      // Buscar y resaltar
+      function buscarPredioPorTexto(texto) {
+        highlightLayer.getSource().clear();
+        const feats = source.getFeatures();
+        const f = feats.find(ft => ft.get("PK_PREDIOS")?.toString() === texto);
+        if (f) {
+          const geometry = f.getGeometry();
+          const extent = geometry.getExtent();
+          map.getView().fit(extent, { duration: 1000, maxZoom: 17 });
+          const clone = f.clone();
+          highlightLayer.getSource().addFeature(clone);
+          mostrarInfo(f);
         } else {
-          tries++;
-          if (tries >= maxRetries) {
-            clearInterval(iv);
-            reject(new Error("Timeout esperando features de la capa."));
-          }
+          alert("⚠️ No se encontró ningún predio con esa matrícula.");
         }
-      }, delay);
+      }
+
+      // Autocompletar
+      searchInput.addEventListener("input", function () {
+        const texto = this.value.trim().toLowerCase();
+        suggestions.innerHTML = "";
+        if (!texto) {
+          suggestions.style.display = "none";
+          return;
+        }
+
+        const feats = source.getFeatures();
+        const coincidencias = feats
+          .map(f => f.get("PK_PREDIOS")?.toString())
+          .filter(pk => pk && pk.toLowerCase().includes(texto))
+          .slice(0, 10);
+
+        coincidencias.forEach(pk => {
+          const div = document.createElement("div");
+          div.textContent = pk;
+          div.addEventListener("click", function () {
+            searchInput.value = pk;
+            suggestions.style.display = "none";
+            buscarPredioPorTexto(pk);
+          });
+          suggestions.appendChild(div);
+        });
+
+        suggestions.style.display = coincidencias.length ? "block" : "none";
+      });
+
+      // Buscar manualmente (Enter o botón)
+      searchButton.addEventListener("click", () => {
+        buscarPredioPorTexto(searchInput.value.trim());
+      });
+
+      searchInput.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") buscarPredioPorTexto(searchInput.value.trim());
+      });
     });
-  }
-
-  // crear capa de resaltado (no cambia la capa original)
-  const highlightLayer = new ol.layer.Vector({
-    source: new ol.source.Vector(),
-    style: new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: 'red', width: 3 }),
-      fill: new ol.style.Fill({ color: 'rgba(255,0,0,0.12)' })
-    })
-  });
-  map.addLayer(highlightLayer);
-
-  // overlay popup: si qgis2web ya creó overlay llamado 'popup' con id #popup, intentar usarlo
-  let overlay;
-  try {
-    overlay = map.getOverlays().getArray().find(o => o.getElement && o.getElement() === popupEl);
-    if (!overlay) {
-      overlay = new ol.Overlay({ element: popupEl, autoPan: true, autoPanAnimation: { duration: 250 } });
-      map.addOverlay(overlay);
-    }
-  } catch (e) {
-    // si falla, crear overlay
-    overlay = new ol.Overlay({ element: popupEl, autoPan: true, autoPanAnimation: { duration: 250 } });
-    map.addOverlay(overlay);
-  }
-  if (popupCloser) {
-    popupCloser.onclick = function () { overlay.setPosition(undefined); popupCloser.blur(); return false; };
-  }
-
-  // cuando la capa tenga features, crear índice de PK_PREDIOS
-  let pkIndex = []; // array of strings
-  waitFeatures().then(features => {
-    pkIndex = features.map(f => {
-      const v = f.get("PK_PREDIOS");
-      return v !== undefined && v !== null ? String(v) : null;
-    }).filter(Boolean);
-    // eliminar duplicados
-    pkIndex = Array.from(new Set(pkIndex)).sort();
-    console.log("PK index creado, entradas:", pkIndex.length);
-  }).catch(err => {
-    console.warn("No se pudieron cargar features para autocompletar:", err);
-  });
-
-  // función para filtrar y mostrar sugerencias
-  function showSuggestions(text) {
-    suggestions.innerHTML = "";
-    if (!text || text.length < 2 || !pkIndex.length) { suggestions.style.display = "none"; return; }
-    const low = text.toLowerCase();
-    const matches = pkIndex.filter(p => p.toLowerCase().includes(low)).slice(0, 12);
-    if (!matches.length) { suggestions.style.display = "none"; return; }
-    matches.forEach(m => {
-      const div = document.createElement("div");
-      div.textContent = m;
-      div.style.padding = "8px 10px";
-      div.style.cursor = "pointer";
-      div.onmouseenter = () => div.style.background = "#f3f6f3";
-      div.onmouseleave = () => div.style.background = "white";
-      div.onclick = () => {
-        searchInput.value = m;
-        suggestions.style.display = "none";
-        zoomToPK(m);
-      };
-      suggestions.appendChild(div);
-    });
-    suggestions.style.display = "block";
-  }
-
-  // función que busca feature por PK exacto y centra + abre popup
-  function zoomToPK(pk) {
-    if (!pk) return;
-    const src = layerVar.getSource();
-    const feats = src.getFeatures();
-    const found = feats.find(f => String(f.get("PK_PREDIOS")) === String(pk));
-    if (!found) {
-      alert("No se encontró ningún predio con esa matrícula.");
-      return;
-    }
-    // centrar y ajustar vista
-    const geom = found.getGeometry();
-    if (!geom) { alert("Predio encontrado pero sin geometría"); return; }
-    const extent = geom.getExtent();
-    map.getView().fit(extent, { duration: 900, maxZoom: 17, padding: [70,70,70,70] });
-
-    // resaltar (clonar para no modificar original)
-    highlightLayer.getSource().clear();
-    try {
-      highlightLayer.getSource().addFeature(found.clone ? found.clone() : new ol.Feature({ geometry: geom.clone() }) );
-    } catch(e) {
-      // fallback
-      const tmp = new ol.Feature({ geometry: geom.clone() });
-      highlightLayer.getSource().addFeature(tmp);
-    }
-
-    // leer propiedades con tolerancia a nombres (NOMBRE_VER, NOMBRE_VEREDA, Usos, USO, etc.)
-    const props = found.getProperties();
-    const matricula = props.PK_PREDIOS || props.PK || props.codigo || "Sin dato";
-    const vereda = props.NOMBRE_VER || props.NOMBRE_VEREDA || props.Vereda || props.VEREDA || "Sin dato";
-    const usos = props.Usos || props.USO || props.Uso || "Sin dato";
-
-    // mostrar popup (preferible en punto interior)
-    let coord;
-    try {
-      coord = geom.getInteriorPoint ? geom.getInteriorPoint().getCoordinates() : ol.extent.getCenter(extent);
-    } catch (err) {
-      coord = ol.extent.getCenter(extent);
-    }
-    if (popupContentEl) {
-      popupContentEl.innerHTML = `<b>PK_PREDIOS:</b> ${matricula}<br><b>Vereda:</b> ${vereda}<br><b>Usos:</b> ${usos}`;
-      overlay.setPosition(coord);
-    } else {
-      alert(`Matrícula: ${matricula}\nVereda: ${vereda}\nUsos: ${usos}`);
-    }
-  }
-
-  // eventos: input -> mostrar sugerencias; click botón / Enter -> zoom exacto
-  searchInput.addEventListener("input", (e) => showSuggestions(e.target.value));
-  searchButton.addEventListener("click", () => zoomToPK(searchInput.value.trim()));
-  searchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      suggestions.style.display = "none";
-      zoomToPK(searchInput.value.trim());
-    } else if (e.key === "ArrowDown") {
-      // opcional: mover foco a la lista (no implementado completo)
-    }
-  });
-
-  // cerrar sugerencias si clic fuera
-  document.addEventListener("click", (ev) => {
-    if (!searchContainer.contains(ev.target)) suggestions.style.display = "none";
-  });
-
-});
-</script>
+  </script>
+</body>
+</html>
